@@ -28,15 +28,15 @@ export interface HomePage {
 }
 
 const content: HomePage = {
-  "hero": [...],
-  "sections": [...],
-  "whyMedigyTitle": someFunctionResult(...),
-  "whyMedigyDescription":  // multi-line templates are OK too
+  hero: [...],
+  sections: [...],
+  whyMedigyTitle: someFunctionResult(...),
+  whyMedigyDescription:  // multi-line templates are OK too
     `Medigy is crowd-sourced and peer network-based. Buyers 
      get access to rich content about the digital health products 
      they’re looking for. Influencers have a new place to build and
      engage with a community around their areas of expertise.`,
-  "whyMedigyButton": "Why Medigy?",
+  whyMedigyButton: "Why Medigy?",
 };
 
 if (import.meta.main) {
