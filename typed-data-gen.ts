@@ -35,8 +35,8 @@ export class StdOutEmitter implements Emitter {
   }
 }
 
-export class TextOutEmitter implements Emitter {
-  static readonly singleton = new TextOutEmitter();
+export class TextEmitter implements Emitter {
+  static readonly singleton = new TextEmitter();
 
   emitJSON(content: unknown | EmittableContent): string {
     const data = typeof content === "function" ? content() : content;
