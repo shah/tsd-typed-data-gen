@@ -1,6 +1,6 @@
 import { path } from "./deps.ts";
 
-const jsonStringifyIndentDefault = 2;
+export const jsonStringifyIndentDefault = 2;
 
 export function forceExtension(forceExtn: string, fileName: string): string {
   const fileUrlPrefix = "file://";
