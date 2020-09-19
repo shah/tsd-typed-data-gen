@@ -51,8 +51,15 @@ the typed data as JSON to STDOUT:
 deno run -A my-data.ts 
 ```
 
-Or, you can have it default it to a regular file with the same name (note that
-there's a space between the `my-data.ts` and .json CLI argument):
+It's even more powerful when the source data is at another location:
+
+```
+deno run -A https://raw.githubusercontent.com/shah/tsd-typed-data-gen/master/test-data.ts local-file.auto.json
+```
+
+Or, you can have it default it to a regular file with the same name at the same
+location if it's on the local file system (note that there's a space between 
+the `my-data.ts` and .json CLI argument):
 
 ```
 deno run -A my-data.ts .json

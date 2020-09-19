@@ -1,5 +1,7 @@
 import { path } from "./deps.ts";
 
+const jsonStringifyIndentDefault = 2;
+
 export function forceExtension(forceExtn: string, fileName: string): string {
   const fileUrlPrefix = "file://";
   if (fileName.startsWith(fileUrlPrefix)) {
@@ -28,8 +30,19 @@ export class StdOutEmitter implements Emitter {
     const data = typeof content === "function" ? content() : content;
     const jsonText = typeof data === "string"
       ? data
-      : JSON.stringify(data, null, 2);
+      : JSON.stringify(data, null, jsonStringifyIndentDefault);
     console.log(jsonText);
+  }
+}
+
+export class TextOutEmitter implements Emitter {
+  static readonly singleton = new TextOutEmitter();
+
+  emitJSON(content: unknown | EmittableContent): string {
+    const data = typeof content === "function" ? content() : content;
+    return typeof data === "string"
+      ? data
+      : JSON.stringify(data, null, jsonStringifyIndentDefault);
   }
 }
 
@@ -43,7 +56,7 @@ export class FileSystemEmitter implements Emitter {
     const data = typeof content === "function" ? content() : content;
     const jsonText = typeof data === "string"
       ? data
-      : JSON.stringify(data, null, 2);
+      : JSON.stringify(data, null, jsonStringifyIndentDefault);
     Deno.writeFileSync(
       typeof this.destFileName === "function"
         ? this.destFileName(this)
