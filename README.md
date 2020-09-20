@@ -82,4 +82,54 @@ Sometimes the source JSON cannot be modified but we want to verify that JSON
 content matches a TypeScript Schema. The TDG library allows for what we call
 a "JSON Module".
 
-TODO: show example of how JSON Modules work
+Assume we want to verify that a JSON file matches the following interface,
+in a file called `json-module.test-schema.ts`:
+
+```typescript
+export interface Expected {
+  readonly text: string;
+  readonly numeric: number;
+}
+```
+
+The JSON looks like this, in a file called `invalid.json`:
+
+```json
+{
+  "text": "text value",
+  "numeric": "bad number"
+}
+```
+
+Here's how we can easily validate it:
+
+```typescript
+const validJsonModule = new JsonModule(
+  {
+    imports: [
+      {
+        denoCompilerSrcKey: "/json-module.test-schema.ts",
+        typeScriptImportRef:
+          `import type * as mod from "./json-module.test-schema.ts"`,
+        importedRefSourceCode: new mod.TextFileSourceCode(
+          "./json-module.test-schema.ts",
+        ),
+      },
+    ],
+    moduleName: "invalid.auto.ts",
+    jsonContentFileName: "invalid.json",
+    primaryConstName: "expected",
+    primaryConstTsType: "mod.Expected",
+  },
+);
+
+const tsSrcDiagnostics = await validJsonModule.validate();
+if(tsSrcDiagnostics) {
+  // if validate returns diagnostics it means the JSON file does not
+  // match our expected interface.  
+}
+```
+
+The JSON Modules feature allows you to use the full power of TypeScript to
+validate a JSON file against a verifiable structure instead of having to rely 
+on less reliable strategies such as JSON Schema.
