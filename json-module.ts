@@ -94,10 +94,9 @@ export class JsonModule {
     return diagnostics;
   }
 
-  persistGeneratedSrcCode(asFileName?: string): void {
-    Deno.writeTextFileSync(
-      asFileName || this.options.moduleName,
-      this.generatedTypeScript,
-    );
+  persistGeneratedSrcCode(asFileName?: string): string {
+    const emitFileName = asFileName || this.options.moduleName;
+    Deno.writeTextFileSync(emitFileName, this.generatedTypeScript);
+    return emitFileName;
   }
 }
