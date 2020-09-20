@@ -9,6 +9,11 @@ is necessary, all data structures are defined in TypeScript. By sticking with
 TypeScript, Visual Studio Code and other TypeScript-based editors can provide
 excellent syntax highlighting and error detection support.
 
+You can create either `*.ts` files that generate `*.json` files or, you can 
+use existing `*.json` files with companion `*.ts` schema files that can
+validate any existing JSON files with any structure that TypeScript natively
+supports.
+
 # Usage - TypeScript that generates JSON
 
 To use this library to generate valid, type-safe JSON, first create any 
@@ -92,15 +97,6 @@ export interface Expected {
 }
 ```
 
-The JSON looks like this, in a file called `invalid.json`:
-
-```json
-{
-  "text": "text value",
-  "numeric": "bad number"
-}
-```
-
 Here's how we can easily validate it:
 
 ```typescript
@@ -126,8 +122,48 @@ const validJsonModule = new JsonModule(
 const tsSrcDiagnostics = await validJsonModule.validate();
 if(tsSrcDiagnostics) {
   // if validate returns diagnostics it means the JSON file does not
-  // match our expected interface.  
+  // match our expected interface. 
+  console.log(Deno.formatDiagnostics(tsSrcDiagnostics));
 }
+```
+
+If you ran the above code on JSON that looks like this, in a file called
+`invalid.json`:
+
+```json
+{
+  "text": "text value",
+  "numeric": "bad number"
+}
+```
+
+You would see this error:
+
+```bash
+ TS2322 [ERROR]: Type 'string' is not assignable to type 'number'.
+  numeric: 'bad number'
+  ~~~~~~~
+    at /test-invalid.ts:6:3
+
+    The expected type comes from property 'numeric' which is declared here on type 'Expected'
+      readonly numeric: number;
+               ~~~~~~~
+        at /json-module.test-schema.ts:3:12
+```
+
+The way the error is generated is that the TDG JSON Module library simply
+creates a dynamic TypeScript file, compiles it, and shows the resulting
+errors. Here's what the interim `*.ts` file looks like:
+
+```typescript
+import type * as mod from "./json-module.test-schema.ts";
+
+export const expected: mod.Expected = {
+  text: 'text value',
+  numeric: 'bad number'
+};
+
+export default expected;
 ```
 
 The JSON Modules feature allows you to use the full power of TypeScript to

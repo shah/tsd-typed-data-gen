@@ -81,6 +81,7 @@ Deno.test("./json-module.test-invalid.json.golden generates diagnostics", async 
     tsSrcDiagnostics,
     "Diagonistics should be produced for invalid JSON Schema",
   );
+  // console.log("\n", Deno.formatDiagnostics(tsSrcDiagnostics));
   const error = tsSrcDiagnostics[0];
   ta.assertEquals(5, error.start!.line);
   ta.assertEquals(
