@@ -52,17 +52,19 @@ export class FileSystemEmitter implements Emitter {
   ) {
   }
 
-  emitJSON(content: unknown | EmittableContent): void {
+  emitJSON(content: unknown | EmittableContent): string {
     const data = typeof content === "function" ? content() : content;
     const jsonText = typeof data === "string"
       ? data
       : JSON.stringify(data, null, jsonStringifyIndentDefault);
+    const writeFileDest = typeof this.destFileName === "function"
+      ? this.destFileName(this)
+      : this.destFileName;
     Deno.writeFileSync(
-      typeof this.destFileName === "function"
-        ? this.destFileName(this)
-        : this.destFileName,
+      writeFileDest,
       new TextEncoder().encode(jsonText),
     );
+    return writeFileDest;
   }
 }
 
@@ -73,9 +75,9 @@ export class CliArgsEmitter implements Emitter {
   ) {
   }
 
-  emitJSON(content: unknown | EmittableContent): void {
+  emitJSON(content: unknown | EmittableContent): string | void {
     if (Deno.args && Deno.args.length > 0) {
-      new FileSystemEmitter(
+      return new FileSystemEmitter(
         Deno.args[0] === ".json"
           ? forceExtension(this.defaultJsonExtn, this.fromSrcModuleURL)
           : Deno.args[0],

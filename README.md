@@ -1,4 +1,4 @@
-# Typed Data Generator for Deno
+# Typed Data Generator (TDG) for Deno
 
 This library assumes that structured data such as JSON, CSV, etc. are kept as
 TypeScript `*.ts` source files and then use this `typed-data-gen` library to
@@ -9,12 +9,13 @@ is necessary, all data structures are defined in TypeScript. By sticking with
 TypeScript, Visual Studio Code and other TypeScript-based editors can provide
 excellent syntax highlighting and error detection support.
 
-# Usage
+# Usage - TypeScript that generates JSON
 
-To use this library, first create any TypeScript file and define any arbitrary
-data structures. Inside the TypeScript file, the `content` or any other 
-variable can be generated organically or automatically with any level of 
-complexity. Then, just `CliArgsEmitter`at the bottom of the file.
+To use this library to generate valid, type-safe JSON, first create any 
+TypeScript file and define any arbitrary data structures. Inside the TypeScript
+file, the `content` or any other variable can be generated organically or
+automatically with any level of complexity. Then, just add `CliArgsEmitter`at 
+the bottom of the file.
 
 ```javascript
 import * as typedDataGen from "https://denopkg.com/shah/tsd-typed-data-gen/mod.ts";
@@ -54,7 +55,7 @@ deno run -A my-data.ts
 It's even more powerful when the source data is at another location:
 
 ```
-deno run -A https://raw.githubusercontent.com/shah/tsd-typed-data-gen/master/test-data.ts local-file.auto.json
+deno run -A https://raw.githubusercontent.com/shah/tsd-typed-data-gen/master/test-data.tdg.ts local-file.auto.json
 ```
 
 Or, you can have it default it to a regular file with the same name at the same
@@ -74,3 +75,11 @@ Or, you can have it default it to a regular file with a different name:
 ```
 deno run -A my-data.ts another-name.json
 ```
+
+# Usage - JSON that can use TypeScript to verify its schema
+
+Sometimes the source JSON cannot be modified but we want to verify that JSON
+content matches a TypeScript Schema. The TDG library allows for what we call
+a "JSON Module".
+
+TODO: show example of how JSON Modules work
