@@ -33,17 +33,15 @@ export function cleanJS(
 }
 
 export interface SourceCode {
-  readonly url: string;
+  readonly provenance: string | URL;
   readonly content: string;
 }
 
-export class FileSystemSourceCode implements SourceCode {
-  readonly url: string;
+export class TextFileSourceCode implements SourceCode {
   readonly content: string;
 
-  constructor(localFileName: string) {
-    this.url = localFileName;
-    this.content = Deno.readTextFileSync(localFileName);
+  constructor(readonly provenance: string | URL) {
+    this.content = Deno.readTextFileSync(provenance);
   }
 }
 

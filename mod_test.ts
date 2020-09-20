@@ -41,7 +41,7 @@ const testJsonModuleOptionsDefault = {
       denoCompilerSrcKey: "/json-module.test-schema.ts",
       typeScriptImportRef:
         `import type * as mod from "./json-module.test-schema.ts"`,
-      importedRefSourceCode: new mod.FileSystemSourceCode(
+      importedRefSourceCode: new mod.TextFileSourceCode(
         "./json-module.test-schema.ts",
       ),
     },
