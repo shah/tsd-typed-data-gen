@@ -1,5 +1,6 @@
 import { testingAsserts as ta } from "./deps-test.ts";
 import { path } from "./deps.ts";
+import type { JsonModuleOptions } from "./json-module.ts";
 import * as mod from "./mod.ts";
 import tdgTestData from "./typed-data-gen.test.tdg.ts";
 
@@ -38,9 +39,11 @@ const testJsonModuleOptionsDefault = {
   imports: [
     {
       denoCompilerSrcKey: "/json-module.test-schema.ts",
-      typeScriptImportCode:
+      typeScriptImportRef:
         `import type * as mod from "./json-module.test-schema.ts"`,
-      importModuleFileName: "./json-module.test-schema.ts",
+      importedRefSourceCode: new mod.FileSystemSourceCode(
+        "./json-module.test-schema.ts",
+      ),
     },
   ],
   primaryConstName: "expected",

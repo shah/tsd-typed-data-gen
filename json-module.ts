@@ -32,10 +32,25 @@ export function cleanJS(
   return sjss.toString(value, space, next, key);
 }
 
+export interface SourceCode {
+  readonly url: string;
+  readonly content: string;
+}
+
+export class FileSystemSourceCode implements SourceCode {
+  readonly url: string;
+  readonly content: string;
+
+  constructor(localFileName: string) {
+    this.url = localFileName;
+    this.content = Deno.readTextFileSync(localFileName);
+  }
+}
+
 export interface JsonModuleImport {
   readonly denoCompilerSrcKey: string;
-  readonly typeScriptImportCode: string;
-  readonly importModuleFileName: string;
+  readonly typeScriptImportRef: string;
+  readonly importedRefSourceCode: SourceCode;
 }
 
 export interface JsonModuleOptions {
@@ -57,7 +72,7 @@ export class JsonModule {
       Deno.readTextFileSync(this.options.jsonContentFileName),
     );
     const sourceCode = `
-    ${this.options.imports.map((i) => i.typeScriptImportCode).join("\n")};
+    ${this.options.imports.map((i) => i.typeScriptImportRef).join("\n")};
 
     export const ${this.options.primaryConstName}: ${this.options.primaryConstTsType} = ${
       sjs.stringify(this.jsonValue, cleanJS, 2)
@@ -74,9 +89,7 @@ export class JsonModule {
     const sources: Record<string, string> = {};
     sources[moduleURL] = this.generatedTypeScript;
     for (const i of this.options.imports) {
-      sources[i.denoCompilerSrcKey] = Deno.readTextFileSync(
-        i.importModuleFileName,
-      );
+      sources[i.denoCompilerSrcKey] = i.importedRefSourceCode.content;
     }
 
     const [diagnostics] = await Deno.compile(moduleURL, sources);
