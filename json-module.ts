@@ -57,6 +57,8 @@ export interface JsonModuleOptions {
   readonly jsonContentFileName: string;
   readonly primaryConstName: string;
   readonly primaryConstTsType: string;
+  readonly primaryConstIsDefault?: boolean;
+  readonly tdgModuleImportRef?: string;
 }
 
 export class JsonModule {
@@ -69,14 +71,17 @@ export class JsonModule {
     this.jsonValue = JSON.parse(
       Deno.readTextFileSync(this.options.jsonContentFileName),
     );
-    const sourceCode = `
+    let sourceCode = `
     ${this.options.imports.map((i) => i.typeScriptImportRef).join("\n")};
 
     export const ${this.options.primaryConstName}: ${this.options.primaryConstTsType} = ${
       sjs.stringify(this.jsonValue, cleanJS, 2)
-    };
+    };`;
 
-    export default ${this.options.primaryConstName};`;
+    if (this.options.primaryConstIsDefault) {
+      sourceCode += `
+      export default ${this.options.primaryConstName};`;
+    }
 
     // TODO: the built-in deno fmt should be used to pretty-up generated code
     this.generatedTypeScript = sourceCode;
@@ -97,6 +102,23 @@ export class JsonModule {
   persistGeneratedSrcCode(asFileName?: string): string {
     const emitFileName = asFileName || this.options.moduleName;
     Deno.writeTextFileSync(emitFileName, this.generatedTypeScript);
+    return emitFileName;
+  }
+
+  persistTypedDataGenCode(asFileName?: string): string {
+    const emitFileName = asFileName || this.options.moduleName;
+    const tdgImportRef = this.options.tdgModuleImportRef ||
+      `import * as typedDataGen from "https://denopkg.com/shah/tsd-typed-data-gen/mod.ts";`;
+    Deno.writeTextFileSync(
+      emitFileName,
+      `
+      ${tdgImportRef}
+      ${this.generatedTypeScript}
+      if (import.meta.main) {
+        new typedDataGen.CliArgsEmitter(import.meta.url).emitJSON(${this.options.primaryConstName});
+      }      
+    `,
+    );
     return emitFileName;
   }
 }
