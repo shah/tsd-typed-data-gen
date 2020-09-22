@@ -1,6 +1,5 @@
 import { testingAsserts as ta } from "./deps-test.ts";
 import { path } from "./deps.ts";
-import type { JsonModuleOptions } from "./json-module.ts";
 import * as mod from "./mod.ts";
 import tdgTestData from "./typed-data-gen.test.tdg.ts";
 
@@ -41,7 +40,7 @@ const testJsonModuleOptionsDefault = {
       denoCompilerSrcKey: "/json-module.test-schema.ts",
       typeScriptImportRef:
         `import type * as mod from "./json-module.test-schema.ts"`,
-      importedRefSourceCode: new mod.TextFileSourceCode(
+      importedRefSourceCode: await mod.acquireSourceCode(
         "./json-module.test-schema.ts",
       ),
     },
@@ -88,4 +87,26 @@ Deno.test("./json-module.test-invalid.json.golden generates diagnostics", async 
     "Type 'string' is not assignable to type 'number'.",
     error.messageText,
   );
+});
+
+Deno.test("acquire local source code module", async () => {
+  const scModule = "./json-module.test-schema.ts";
+  const sc = await mod.acquireSourceCode(scModule);
+  ta.assert(sc.isValid);
+  ta.assert(Deno.readTextFileSync(scModule), sc.content);
+});
+
+Deno.test("acquire remote source code module", async () => {
+  const scModule =
+    "https://raw.githubusercontent.com/shah/tsd-typed-data-gen/master/json-module.test-schema.ts";
+  const sc = await mod.acquireSourceCode(scModule);
+  ta.assert(sc.isValid, `${scModule} should be valid`);
+  ta.assert(Deno.readTextFileSync("./json-module.test-schema.ts"), sc.content);
+});
+
+Deno.test("fail to acquire remote source code module", async () => {
+  const scModule = "https://raw.githubusercontent.com/bad/url/test-schema.ts";
+  const sc = await mod.acquireSourceCode(scModule);
+  ta.assert(!sc.isValid);
+  ta.assert(sc.error);
 });

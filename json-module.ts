@@ -2,6 +2,7 @@ import {
   serializeJS as sjs,
   serializeJsStringify as sjss,
   serializeJsTypes as sjst,
+  fs,
 } from "./deps.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -35,13 +36,125 @@ export function cleanJS(
 export interface SourceCode {
   readonly provenance: string | URL;
   readonly content: string;
+  readonly isValid: boolean;
+  readonly error?: string | Error;
 }
 
-export class TextFileSourceCode implements SourceCode {
+export class LocalFsTextFileSourceCode implements SourceCode {
   readonly content: string;
+  readonly isValid: boolean;
+  readonly error?: string | Error;
 
-  constructor(readonly provenance: string | URL) {
-    this.content = Deno.readTextFileSync(provenance);
+  constructor(readonly provenance: string) {
+    if (fs.existsSync(provenance)) {
+      try {
+        this.content = Deno.readTextFileSync(provenance);
+        this.isValid = true;
+      } catch (err) {
+        this.isValid = false;
+        this.error = err;
+        this.content = err;
+      }
+    } else {
+      this.content = `${provenance} does not exist.`;
+      this.isValid = false;
+      this.error = new Error(this.content);
+    }
+  }
+}
+
+function isRemoteURL(text: string | URL): boolean {
+  if (typeof text === "string") {
+    const pattern = new RegExp(
+      "^(https?:\\/\\/)?" + // protocol
+        "((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|" + // domain name
+        "((\\d{1,3}\\.){3}\\d{1,3}))" + // OR ip (v4) address
+        "(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*" + // port and path
+        "(\\?[;&a-z\\d%_.~+=-]*)?" + // query string
+        "(\\#[-a-z\\d_]*)?$", // fragment locator
+      "i",
+    );
+    return !!pattern.test(text);
+  }
+  return true;
+}
+
+export interface RemoteUrlContentResult {
+  readonly origURL: string | URL;
+  readonly finalURL: string;
+  readonly isValid: boolean;
+  readonly error?: string | Error;
+  readonly content?: string;
+}
+
+export async function remoteUrlContent(
+  url: string | URL,
+): Promise<RemoteUrlContentResult> {
+  try {
+    const response = await fetch(url, { redirect: "follow" });
+    const finalUrl = response.url.replace(/\/$/, "");
+    const result: RemoteUrlContentResult = {
+      origURL: url,
+      finalURL: finalUrl,
+      isValid: false,
+      content: await response.text(),
+    };
+    if (response.status != 200) {
+      return {
+        ...result,
+        error: new Deno.errors.Http(
+          `${url}: status ${response.status}-'${response.statusText}' while reading ${finalUrl}`,
+        ),
+      };
+    }
+    return {
+      ...result,
+      isValid: true,
+    };
+  } catch (err) {
+    return {
+      origURL: url,
+      finalURL: url.toString(),
+      isValid: false,
+      error: err,
+    };
+  }
+}
+
+export class RemoteUrlTextFileSourceCode implements SourceCode {
+  readonly provenance: string;
+  readonly content: string;
+  readonly isValid: boolean;
+  readonly error?: string | Error;
+
+  constructor(readonly rucr: RemoteUrlContentResult) {
+    this.provenance = rucr.finalURL;
+    if (rucr.isValid) {
+      this.isValid = true;
+      this.content = rucr.content!;
+    } else {
+      this.isValid = false;
+      this.content = `${this.provenance} is not a valid URL: ${this.error}.`;
+      this.error = rucr.error;
+    }
+  }
+}
+
+export async function acquireSourceCode(
+  provenance: string | URL,
+): Promise<SourceCode> {
+  if (isRemoteURL(provenance)) {
+    return new RemoteUrlTextFileSourceCode(await remoteUrlContent(provenance));
+  } else if (typeof provenance === "string") {
+    return new LocalFsTextFileSourceCode(provenance);
+  } else {
+    return {
+      provenance: provenance,
+      isValid: false,
+      error: new Error(`${provenance} must be a local file or remote URL`),
+      content:
+        `${provenance}: provenance is neither a string (local file name) nor a remote URL`,
+    };
   }
 }
 
