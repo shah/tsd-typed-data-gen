@@ -34,13 +34,34 @@ export function cleanJS(
 }
 
 export interface SourceCode {
-  readonly provenance: string | URL;
+  readonly provenance: string;
   readonly content: string;
+}
+
+export interface Validatable {
   readonly isValid: boolean;
   readonly error?: string | Error;
 }
 
-export class LocalFsTextFileSourceCode implements SourceCode {
+export interface LocalSourceCode extends SourceCode, Validatable {
+  readonly isLocalSourceCode: true;
+}
+
+export function isLocalSourceCode(sc: SourceCode): sc is LocalSourceCode {
+  return "isLocalSourceCode" in sc;
+}
+
+export interface RemoteSourceCode extends SourceCode, Validatable {
+  readonly isRemoteSourceCode: true;
+  readonly fetchResult: RemoteUrlFetchResult;
+}
+
+export function isRemoteSourceCode(sc: SourceCode): sc is RemoteSourceCode {
+  return "isRemoteSourceCode" in sc;
+}
+
+export class LocalFsTextFileSourceCode implements LocalSourceCode {
+  readonly isLocalSourceCode = true;
   readonly content: string;
   readonly isValid: boolean;
   readonly error?: string | Error;
@@ -63,7 +84,7 @@ export class LocalFsTextFileSourceCode implements SourceCode {
   }
 }
 
-function isRemoteURL(text: string | URL): boolean {
+export function isRemoteURL(text: string | URL): boolean {
   if (typeof text === "string") {
     const pattern = new RegExp(
       "^(https?:\\/\\/)?" + // protocol
@@ -79,7 +100,7 @@ function isRemoteURL(text: string | URL): boolean {
   return true;
 }
 
-export interface RemoteUrlContentResult {
+export interface RemoteUrlFetchResult {
   readonly origURL: string | URL;
   readonly finalURL: string;
   readonly isValid: boolean;
@@ -89,11 +110,11 @@ export interface RemoteUrlContentResult {
 
 export async function remoteUrlContent(
   url: string | URL,
-): Promise<RemoteUrlContentResult> {
+): Promise<RemoteUrlFetchResult> {
   try {
     const response = await fetch(url, { redirect: "follow" });
     const finalUrl = response.url.replace(/\/$/, "");
-    const result: RemoteUrlContentResult = {
+    const result: RemoteUrlFetchResult = {
       origURL: url,
       finalURL: finalUrl,
       isValid: false,
@@ -121,35 +142,36 @@ export async function remoteUrlContent(
   }
 }
 
-export class RemoteUrlTextFileSourceCode implements SourceCode {
+export class RemoteUrlTextFileSourceCode implements RemoteSourceCode {
+  readonly isRemoteSourceCode = true;
   readonly provenance: string;
   readonly content: string;
   readonly isValid: boolean;
   readonly error?: string | Error;
 
-  constructor(readonly rucr: RemoteUrlContentResult) {
-    this.provenance = rucr.finalURL;
-    if (rucr.isValid) {
+  constructor(readonly fetchResult: RemoteUrlFetchResult) {
+    this.provenance = fetchResult.finalURL;
+    if (fetchResult.isValid) {
       this.isValid = true;
-      this.content = rucr.content!;
+      this.content = fetchResult.content!;
     } else {
       this.isValid = false;
       this.content = `${this.provenance} is not a valid URL: ${this.error}.`;
-      this.error = rucr.error;
+      this.error = fetchResult.error;
     }
   }
 }
 
 export async function acquireSourceCode(
   provenance: string | URL,
-): Promise<SourceCode> {
+): Promise<SourceCode & Validatable> {
   if (isRemoteURL(provenance)) {
     return new RemoteUrlTextFileSourceCode(await remoteUrlContent(provenance));
   } else if (typeof provenance === "string") {
     return new LocalFsTextFileSourceCode(provenance);
   } else {
     return {
-      provenance: provenance,
+      provenance: provenance.toString(),
       isValid: false,
       error: new Error(`${provenance} must be a local file or remote URL`),
       content:
@@ -159,8 +181,8 @@ export async function acquireSourceCode(
 }
 
 export interface JsonModuleImport {
-  readonly denoCompilerSrcKey: string;
-  readonly typeScriptImportRef: string;
+  readonly denoCompilerSrcKey: (sc: SourceCode) => string;
+  readonly typeScriptImportRef: (sc: SourceCode) => string;
   readonly importedRefSourceCode: SourceCode;
 }
 
@@ -185,7 +207,11 @@ export class JsonModule {
       Deno.readTextFileSync(this.options.jsonContentFileName),
     );
     let sourceCode = `
-    ${this.options.imports.map((i) => i.typeScriptImportRef).join("\n")};
+    ${
+      this.options.imports.map((i) =>
+        i.typeScriptImportRef(i.importedRefSourceCode)
+      ).join("\n")
+    };
 
     export const ${this.options.primaryConstName}: ${this.options.primaryConstTsType} = ${
       sjs.stringify(this.jsonValue, cleanJS, 2)
@@ -205,7 +231,8 @@ export class JsonModule {
     const sources: Record<string, string> = {};
     sources[moduleURL] = this.generatedTypeScript;
     for (const i of this.options.imports) {
-      sources[i.denoCompilerSrcKey] = i.importedRefSourceCode.content;
+      sources[i.denoCompilerSrcKey(i.importedRefSourceCode)] =
+        i.importedRefSourceCode.content;
     }
 
     const [diagnostics] = await Deno.compile(moduleURL, sources);

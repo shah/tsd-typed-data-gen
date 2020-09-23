@@ -37,9 +37,12 @@ Deno.test(`./typed-data-gen.test.tdg.ts emits text`, async () => {
 const testJsonModuleOptionsDefault = {
   imports: [
     {
-      denoCompilerSrcKey: "/json-module.test-schema.ts",
-      typeScriptImportRef:
-        `import type * as mod from "./json-module.test-schema.ts"`,
+      denoCompilerSrcKey: (sc: mod.SourceCode): string => {
+        return "/json-module.test-schema.ts";
+      },
+      typeScriptImportRef: (sc: mod.SourceCode): string => {
+        return `import type * as mod from "./json-module.test-schema.ts"`;
+      },
       importedRefSourceCode: await mod.acquireSourceCode(
         "./json-module.test-schema.ts",
       ),
@@ -92,6 +95,7 @@ Deno.test("./json-module.test-invalid.json.golden generates diagnostics", async 
 Deno.test("acquire local source code module", async () => {
   const scModule = "./json-module.test-schema.ts";
   const sc = await mod.acquireSourceCode(scModule);
+  ta.assert(mod.isLocalSourceCode(sc));
   ta.assert(sc.isValid);
   ta.assert(Deno.readTextFileSync(scModule), sc.content);
 });
@@ -100,7 +104,9 @@ Deno.test("acquire remote source code module", async () => {
   const scModule =
     "https://raw.githubusercontent.com/shah/tsd-typed-data-gen/master/json-module.test-schema.ts";
   const sc = await mod.acquireSourceCode(scModule);
+  ta.assert(mod.isRemoteSourceCode(sc));
   ta.assert(sc.isValid, `${scModule} should be valid`);
+  ta.assert(sc.fetchResult, `${scModule} should have fetch results`);
   ta.assert(Deno.readTextFileSync("./json-module.test-schema.ts"), sc.content);
 });
 
